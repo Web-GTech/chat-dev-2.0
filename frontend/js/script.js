@@ -1,5 +1,5 @@
 // login elements
-const socketUrl = 'wss://chat-dev-2-0.onrender.com/ws';
+const socket = new WebSocket('wss://chat-dev-2-0.onrender.com/ws');
 const login = document.querySelector(".login")
 const loginForm = login.querySelector(".login__form")
 const loginInput = login.querySelector(".login__input")
@@ -11,138 +11,140 @@ const chatInput = chat.querySelector(".chat__input")
 const chatMessages = chat.querySelector(".chat__messages")
 const typingIndicator = document.createElement("div");
 typingIndicator.classList.add("typing-indicator");
-chatMessages.prepend(typingIndicator);
+chatMessages.prepend(typingIndicator);  // Coloca o indicador de digitação no topo da lista de mensagens
 
-const colors = ["cadetblue", "darkgoldenrod", "cornflowerblue", "darkkhaki", "hotpink", "gold"];
-let websocket;
-let typingTimeout;
 
-// Tenta recuperar usuário salvo
-const savedUser = JSON.parse(localStorage.getItem("chatUser"));
-const user = savedUser || { id: "", name: "", color: "" };
+const colors = [
+    "cadetblue",
+    "darkgoldenrod",
+    "cornflowerblue",
+    "darkkhaki",
+    "hotpink",
+    "gold"
+]
 
-// Função para tocar áudio de notificação mesmo com aba fechada
-const playNotificationSound = (soundFile) => {
-    const audio = new Audio(soundFile);
-    audio.play().catch(() => {
-        console.log("Falha ao tocar o som.");
-    });
-};
+const user = { id: "", name: "", color: "" }
 
-// Pede permissão para exibir notificações
-if (Notification.permission === "default") {
-    Notification.requestPermission();
+let websocket
+let typingTimeout;  // Variável para armazenar o timeout do indicador de digitação
+
+const createMessageSelfElement = (content) => {
+    const div = document.createElement("div")
+    div.classList.add("message--self")
+    div.innerHTML = content
+    return div
 }
 
-const showNotification = (title, body) => {
-    if (Notification.permission === "granted") {
-        new Notification(title, { body });
-    }
-};
-
-// Salva as mensagens no LocalStorage
-const saveMessages = () => {
-    localStorage.setItem("chatMessages", chatMessages.innerHTML);
-};
-
-// Recupera mensagens ao recarregar a página
-const loadMessages = () => {
-    const savedMessages = localStorage.getItem("chatMessages");
-    if (savedMessages) {
-        chatMessages.innerHTML = savedMessages;
-    }
-};
-
-// Criação de mensagens
-const createMessageSelfElement = (content) => {
-    const div = document.createElement("div");
-    div.classList.add("message--self");
-    div.innerHTML = content;
-    return div;
-};
-
 const createMessageOtherElement = (content, sender, senderColor) => {
-    const div = document.createElement("div");
-    const span = document.createElement("span");
-    div.classList.add("message--other");
-    span.classList.add("message--sender");
-    span.style.color = senderColor;
-    span.innerHTML = sender;
-    div.appendChild(span);
-    div.innerHTML += content;
-    return div;
+    const div = document.createElement("div")
+    const span = document.createElement("span")
+    div.classList.add("message--other")
+    span.classList.add("message--sender")
+    span.style.color = senderColor
+    span.innerHTML = sender
+    div.appendChild(span)
+    div.innerHTML += content
+    return div
+}
+
+const showPopup = (userName) => {
+    const popup = document.createElement("div");
+    popup.classList.add("popup-notification");
+    popup.innerHTML = <strong>${userName}</strong> entrou no chat!;
+    document.body.appendChild(popup);
+
+    setTimeout(() => {
+        popup.classList.add("show");
+    }, 100);
+
+    setTimeout(() => {
+        popup.classList.remove("show");
+        setTimeout(() => popup.remove(), 300);
+    }, 3000);
 };
 
-// Conecta ao WebSocket
-const connectWebSocket = () => {
-    websocket = new WebSocket(socketUrl);
+const getRandomColor = () => {
+    const randomIndex = Math.floor(Math.random() * colors.length)
+    return colors[randomIndex]
+}
 
-    websocket.onmessage = processMessage;
-    websocket.onopen = () => {
-        if (user.name) {
-            websocket.send(JSON.stringify({ type: "join", userName: user.name }));
-        }
-    };
+const scrollScreen = () => {
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth"
+    })
+}
 
-    websocket.onclose = () => {
-        console.warn("WebSocket desconectado. Tentando reconectar...");
-        setTimeout(connectWebSocket, 3000);
-    };
+// Função para exibir alertas
+const showAlert = (message) => {
+    const alertBox = document.createElement("div");
+    alertBox.textContent = message;
+    alertBox.style.position = "absolute";
+    alertBox.style.top = "10px";
+    alertBox.style.left = "50%";
+    alertBox.style.transform = "translateX(-50%)";
+    alertBox.style.padding = "10px";
+    alertBox.style.backgroundColor = "#4CAF50";
+    alertBox.style.color = "white";
+    alertBox.style.borderRadius = "5px";
+    document.body.appendChild(alertBox);
+    setTimeout(() => alertBox.remove(), 3000);
 };
 
-// Processa mensagens recebidas
 const processMessage = ({ data }) => {
-    const { userId, userName, userColor, content, type } = JSON.parse(data);
+    const { userId, userName, userColor, content, type } = JSON.parse(data)
     
     if (type === "typing") {
         if (userId !== user.id) {
-            typingIndicator.innerHTML = `${userName} está digitando...`;
+            typingIndicator.innerHTML = ${userName} está digitando...;
             typingIndicator.style.display = "block";
-            clearTimeout(typingTimeout);
+            clearTimeout(typingTimeout); // Limpa o timeout anterior
             typingTimeout = setTimeout(() => typingIndicator.style.display = "none", 1500);
         }
         return;
     }
 
     if (type === "join") {
-        showNotification("Novo usuário", `${userName} entrou no chat!`);
-        playNotificationSound("join.mp3");
+        showPopup(userName);
+        showAlert(${userName} entrou no chat);  // Chama a função de alerta
+        new Audio("join.mp3").play().catch(() => {});
         return;
     }
 
     const message =
         userId == user.id
             ? createMessageSelfElement(content)
-            : createMessageOtherElement(content, userName, userColor);
+            : createMessageOtherElement(content, userName, userColor)
 
-    chatMessages.appendChild(message);
-    saveMessages(); // Salva mensagens no localStorage
+    chatMessages.appendChild(message)
 
     if (userId !== user.id) {
-        showNotification("Nova mensagem", `${userName}: ${content}`);
-        playNotificationSound("message.mp3");
+        new Audio("message.mp3").play().catch(() => {});
     }
-};
 
-// Login do usuário
+    scrollScreen()
+}
+
 const handleLogin = (event) => {
-    event.preventDefault();
+    event.preventDefault()
 
-    user.id = crypto.randomUUID();
-    user.name = loginInput.value;
-    user.color = colors[Math.floor(Math.random() * colors.length)];
+    user.id = crypto.randomUUID()
+    user.name = loginInput.value
+    user.color = getRandomColor()
 
-    localStorage.setItem("chatUser", JSON.stringify(user));
+    login.style.display = "none"
+    chat.style.display = "flex"
 
-    login.style.display = "none";
-    chat.style.display = "flex";
+    websocket = new WebSocket("wss://chat-dev-2-0.onrender.com/ws")
+    websocket.onmessage = processMessage
+    
+    websocket.onopen = () => {
+        websocket.send(JSON.stringify({ type: "join", userName: user.name }));
+    }
+}
 
-    connectWebSocket();
-};
-
-// Envio de mensagem
 const sendMessage = (event) => {
-    event.preventDefault();
+    event.preventDefault()
 
     const message = {
         userId: user.id,
@@ -150,26 +152,16 @@ const sendMessage = (event) => {
         userColor: user.color,
         content: chatInput.value,
         type: "message"
-    };
+    }
 
-    websocket.send(JSON.stringify(message));
-    chatInput.value = "";
-};
+    websocket.send(JSON.stringify(message))
+    chatInput.value = ""
+}
 
-// Notificação de digitação
 const notifyTyping = () => {
     websocket.send(JSON.stringify({ type: "typing", userId: user.id, userName: user.name }));
-};
-
-// Eventos
-loginForm.addEventListener("submit", handleLogin);
-chatForm.addEventListener("submit", sendMessage);
-chatInput.addEventListener("input", notifyTyping);
-
-// Se usuário já estiver logado, conectar automaticamente
-if (user.name) {
-    login.style.display = "none";
-    chat.style.display = "flex";
-    loadMessages(); // Carrega mensagens salvas
-    connectWebSocket();
 }
+
+loginForm.addEventListener("submit", handleLogin)
+chatForm.addEventListener("submit", sendMessage)
+chatInput.addEventListener("input", notifyTyping)
