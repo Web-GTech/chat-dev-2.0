@@ -1,88 +1,18 @@
 // login elements
 const socket = new WebSocket('wss://chat-dev-2-0.onrender.com/ws');
-const login = document.querySelector(".login");
-const loginForm = login.querySelector(".login__form");
-const loginInput = login.querySelector(".login__input");
+const login = document.querySelector(".login")
+const loginForm = login.querySelector(".login__form")
+const loginInput = login.querySelector(".login__input")
 
 // chat elements
-const chat = document.querySelector(".chat");
-const chatForm = chat.querySelector(".chat__form");
-const chatInput = chat.querySelector(".chat__input");
-const chatMessages = chat.querySelector(".chat__messages");
+const chat = document.querySelector(".chat")
+const chatForm = chat.querySelector(".chat__form")
+const chatInput = chat.querySelector(".chat__input")
+const chatMessages = chat.querySelector(".chat__messages")
 const typingIndicator = document.createElement("div");
 typingIndicator.classList.add("typing-indicator");
-chatMessages.prepend(typingIndicator);
+chatMessages.prepend(typingIndicator);  // Coloca o indicador de digitação no topo da lista de mensagens
 
-// Adicionando favicon e theme-color
-document.head.insertAdjacentHTML("beforeend", `
-    <link rel="icon" href="./images/favicon.ico" type="image/x-icon">
-    <meta name="theme-color" content="#000000">
-`);
-
-const chatClearButton = document.querySelector(".chat__clear-button");
-
-let userName = localStorage.getItem("userName") || "";
-
-const addMessage = (message, sender) => {
-    const messageElement = document.createElement("div");
-    messageElement.classList.add(sender === userName ? "message--self" : "message--other");
-    messageElement.innerHTML = sender !== userName ? `<span class="message--sender">${sender}</span>${message}` : message;
-    chatMessages.appendChild(messageElement);
-    saveMessages();
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-};
-
-const saveMessages = () => {
-    const messages = Array.from(chatMessages.children).map(msg => msg.outerHTML);
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
-};
-
-const loadMessages = () => {
-    const savedMessages = JSON.parse(localStorage.getItem("chatMessages")) || [];
-    savedMessages.forEach(msg => {
-        chatMessages.innerHTML += msg;
-    });
-};
-
-if (userName) {
-    login.style.display = "none";
-    chat.style.display = "flex";
-    chatClearButton.style.display = "block";
-    loadMessages();
-}
-
-loginForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    userName = loginInput.value.trim();
-    
-    if (userName) {
-        localStorage.setItem("userName", userName);
-        login.style.display = "none";
-        chat.style.display = "flex";
-        chatClearButton.style.display = "block";
-        loadMessages();
-    }
-});
-
-chatForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const message = chatInput.value.trim();
-    
-    if (message) {
-        addMessage(message, userName);
-        chatInput.value = "";
-    }
-});
-
-const clearChat = () => {
-    const confirmClear = confirm("Iniciar uma nova conversa?");
-    if (confirmClear) {
-        localStorage.clear();
-        location.reload();
-    }
-};
-
-chatClearButton.addEventListener("click", clearChat);
 
 const colors = [
     "cadetblue",
@@ -91,35 +21,31 @@ const colors = [
     "darkkhaki",
     "hotpink",
     "gold"
-];
+]
 
-const user = { id: "", name: "", color: "" };
+const user = { id: "", name: "", color: "" }
 
-let websocket;
-let typingTimeout;
-
-const notifyTyping = () => {
-    websocket.send(JSON.stringify({ type: "typing", userName: user.name }));
-};
+let websocket
+let typingTimeout;  // Variável para armazenar o timeout do indicador de digitação
 
 const createMessageSelfElement = (content) => {
-    const div = document.createElement("div");
-    div.classList.add("message--self");
-    div.innerHTML = content;
-    return div;
-};
+    const div = document.createElement("div")
+    div.classList.add("message--self")
+    div.innerHTML = content
+    return div
+}
 
 const createMessageOtherElement = (content, sender, senderColor) => {
-    const div = document.createElement("div");
-    const span = document.createElement("span");
-    div.classList.add("message--other");
-    span.classList.add("message--sender");
-    span.style.color = senderColor;
-    span.innerHTML = sender;
-    div.appendChild(span);
-    div.innerHTML += content;
-    return div;
-};
+    const div = document.createElement("div")
+    const span = document.createElement("span")
+    div.classList.add("message--other")
+    span.classList.add("message--sender")
+    span.style.color = senderColor
+    span.innerHTML = sender
+    div.appendChild(span)
+    div.innerHTML += content
+    return div
+}
 
 const showPopup = (userName) => {
     const popup = document.createElement("div");
@@ -138,25 +64,41 @@ const showPopup = (userName) => {
 };
 
 const getRandomColor = () => {
-    const randomIndex = Math.floor(Math.random() * colors.length);
-    return colors[randomIndex];
-};
+    const randomIndex = Math.floor(Math.random() * colors.length)
+    return colors[randomIndex]
+}
 
 const scrollScreen = () => {
     window.scrollTo({
         top: document.body.scrollHeight,
         behavior: "smooth"
-    });
+    })
+}
+
+// Função para exibir alertas
+const showAlert = (message) => {
+    const alertBox = document.createElement("div");
+    alertBox.textContent = message;
+    alertBox.style.position = "absolute";
+    alertBox.style.top = "10px";
+    alertBox.style.left = "50%";
+    alertBox.style.transform = "translateX(-50%)";
+    alertBox.style.padding = "10px";
+    alertBox.style.backgroundColor = "#4CAF50";
+    alertBox.style.color = "white";
+    alertBox.style.borderRadius = "5px";
+    document.body.appendChild(alertBox);
+    setTimeout(() => alertBox.remove(), 3000);
 };
 
 const processMessage = ({ data }) => {
-    const { userId, userName, userColor, content, type } = JSON.parse(data);
+    const { userId, userName, userColor, content, type } = JSON.parse(data)
     
     if (type === "typing") {
         if (userId !== user.id) {
             typingIndicator.innerHTML = `${userName} está digitando...`;
             typingIndicator.style.display = "block";
-            clearTimeout(typingTimeout);
+            clearTimeout(typingTimeout); // Limpa o timeout anterior
             typingTimeout = setTimeout(() => typingIndicator.style.display = "none", 1500);
         }
         return;
@@ -164,6 +106,7 @@ const processMessage = ({ data }) => {
 
     if (type === "join") {
         showPopup(userName);
+        showAlert(`${userName} entrou no chat`);  // Chama a função de alerta
         new Audio("join.mp3").play().catch(() => {});
         return;
     }
@@ -171,17 +114,54 @@ const processMessage = ({ data }) => {
     const message =
         userId == user.id
             ? createMessageSelfElement(content)
-            : createMessageOtherElement(content, userName, userColor);
+            : createMessageOtherElement(content, userName, userColor)
 
-    chatMessages.appendChild(message);
+    chatMessages.appendChild(message)
 
     if (userId !== user.id) {
         new Audio("message.mp3").play().catch(() => {});
     }
 
-    scrollScreen();
-};
+    scrollScreen()
+}
 
-loginForm.addEventListener("submit", handleLogin);
-chatForm.addEventListener("submit", sendMessage);
-chatInput.addEventListener("input", notifyTyping);
+const handleLogin = (event) => {
+    event.preventDefault()
+
+    user.id = crypto.randomUUID()
+    user.name = loginInput.value
+    user.color = getRandomColor()
+
+    login.style.display = "none"
+    chat.style.display = "flex"
+
+    websocket = new WebSocket("wss://chat-dev-2-0.onrender.com/ws")
+    websocket.onmessage = processMessage
+    
+    websocket.onopen = () => {
+        websocket.send(JSON.stringify({ type: "join", userName: user.name }));
+    }
+}
+
+const sendMessage = (event) => {
+    event.preventDefault()
+
+    const message = {
+        userId: user.id,
+        userName: user.name,
+        userColor: user.color,
+        content: chatInput.value,
+        type: "message"
+    }
+
+    websocket.send(JSON.stringify(message))
+    chatInput.value = ""
+}
+
+const notifyTyping = () => {
+    websocket.send(JSON.stringify({ type: "typing", userId: user.id, userName: user.name }));
+}
+
+loginForm.addEventListener("submit", handleLogin)
+chatForm.addEventListener("submit", sendMessage)
+chatInput.addEventListener("input", notifyTyping)
