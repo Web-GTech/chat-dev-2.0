@@ -1,4 +1,5 @@
 // login elements
+const socket = new WebSocket('wss://chat-dev-2-0.onrender.com/ws');
 const login = document.querySelector(".login")
 const loginForm = login.querySelector(".login__form")
 const loginInput = login.querySelector(".login__input")
